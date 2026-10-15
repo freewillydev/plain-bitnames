@@ -10,17 +10,12 @@ use crate::{
         AmountOverflowError, Authorization, Body, FilledOutput,
         FilledOutputContent, FilledTransaction, GetAddress as _, GetValue as _,
         Header, InPoint, MerkleRoot, OutPoint, OutPointKey, OutputContent,
-        SpentOutput, TxData, Verify as _, constants,
-        transaction::WithdrawalValueRule,
+        SpentOutput, TxData, Verify as _, transaction::WithdrawalValueRule,
     },
 };
 
 fn withdrawal_rule_for_block(header: &Header) -> WithdrawalValueRule {
-    if constants::LEGACY_WITHDRAWAL_ACCOUNTING_BLOCKS.contains(&header.hash()) {
-        WithdrawalValueRule::PayoutOnly
-    } else {
-        WithdrawalValueRule::PayoutAndMainchainFee
-    }
+    WithdrawalValueRule::for_block_hash(header.hash())
 }
 
 /// Calculate total number of inputs across all transactions in a block body
@@ -526,9 +521,10 @@ pub fn connect(
         }
         filled_txs.push(filled_tx);
     }
-    let merkle_root = Body::compute_merkle_root(
+    let merkle_root = Body::compute_merkle_root_with_withdrawal_rule(
         body.coinbase.as_slice(),
         filled_txs.as_slice(),
+        withdrawal_rule_for_block(header),
     )?;
     if merkle_root != header.merkle_root {
         let err = Error::InvalidBody {
@@ -649,9 +645,10 @@ pub fn disconnect_tip(
             }
         },
     )?;
-    let merkle_root = Body::compute_merkle_root(
+    let merkle_root = Body::compute_merkle_root_with_withdrawal_rule(
         body.coinbase.as_slice(),
         filled_txs.as_slice(),
+        withdrawal_rule_for_block(header),
     )?;
     if merkle_root != header.merkle_root {
         let err = Error::InvalidBody {

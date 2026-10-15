@@ -239,8 +239,15 @@ impl<const ENABLE_PRIVATE_API: bool> rpc_api::node::RpcServer
             }
             None => None,
         };
-        let fee_sats =
-            filled_tx.transaction.fee().map_err(custom_err)?.to_sat();
+        let withdrawal_rule = txin.as_ref().map_or(
+            plain_bitnames::types::transaction::WithdrawalValueRule::PayoutAndMainchainFee,
+            |txin| plain_bitnames::types::transaction::WithdrawalValueRule::for_block_hash(txin.block_hash),
+        );
+        let fee_sats = filled_tx
+            .transaction
+            .fee_with_withdrawal_rule(withdrawal_rule)
+            .map_err(custom_err)?
+            .to_sat();
         let res = TxInfo {
             confirmations,
             fee_sats,

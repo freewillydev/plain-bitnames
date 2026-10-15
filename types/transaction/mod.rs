@@ -710,6 +710,17 @@ pub enum WithdrawalValueRule {
     PayoutAndMainchainFee,
 }
 
+impl WithdrawalValueRule {
+    pub fn for_block_hash(hash: crate::BlockHash) -> Self {
+        if crate::constants::LEGACY_WITHDRAWAL_ACCOUNTING_BLOCKS.contains(&hash)
+        {
+            Self::PayoutOnly
+        } else {
+            Self::PayoutAndMainchainFee
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct FilledTransaction {
     pub transaction: Transaction,
